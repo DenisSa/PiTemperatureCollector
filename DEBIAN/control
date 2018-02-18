@@ -1,0 +1,7 @@
+Package: rpitempreport
+Version: 1.0
+Section: base
+Priority: optional
+Architecture: all
+Maintainer: d <denis.saz@gmail.com>
+Description: Monitor Raspberry PI temperature through InfluxDB

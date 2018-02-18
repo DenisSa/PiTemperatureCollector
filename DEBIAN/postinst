@@ -1,0 +1,3 @@
+if [ -e /bin/systemctl ]; then
+	systemctl enable rpi_temp_monitor.service
+fi
