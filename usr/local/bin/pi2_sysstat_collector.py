@@ -4,13 +4,17 @@ _cpuCommand = """awk -v a="$(awk '/cpu /{print $2+$4,$2+$4+$5}' /proc/stat; slee
 
 
 def getCPU():
-    p = subprocess.Popen(_cpuCommand,
-                         stdout=subprocess.PIPE,
-                         shell=True)
-    output = p.communicate()[0].rstrip()
-    result = p.wait()
-    if result != 0:
-        raise
+    try:
+        p = subprocess.Popen(_cpuCommand,
+                             stdout=subprocess.PIPE,
+                             shell=True)
+        output = p.communicate()[0].rstrip()
+        result = p.wait()
+        if result != 0:
+            raise
+    except Exception as e:
+        print "Caught exception: {0}".format(str(e))
+        output = 0
     return output
 
 
