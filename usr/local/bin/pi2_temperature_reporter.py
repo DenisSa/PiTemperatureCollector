@@ -1,39 +1,65 @@
 import subprocess
 from datetime import datetime
 import socket
-import requests
 import re
 import time
 import configparser
 import argparse
+from influxdb import InfluxDBClient
+import pi2_sysstat_collector as sysstat
 
 
 class pi2_temperature_reporter:
     __temperatureCommand = "vcgencmd measure_temp"
-    __influxDB_db = "rpi_temperature"
-    __influxDB_write_url = "http://localhost:8086/write?"
+    __influxDB_db = "rpi_metrics"
+    __reg = re.compile(r"(\d+.\d+)")
+    __influxDB_host = "localhost"
+    __influxDB_port = 8086
+    __poll_interval = 60
 
     def __init__(self, configpath):
         config = configparser.ConfigParser()
         if configpath:
             config.read(configpath)
             self.__influxDB_db = config['DEFAULT']['influxDB_db']
-            self.__influxDB_write_url = config['DEFAULT']['influxDB_write_url']
+            self.__influxDB_host = config['DEFAULT']['influxDB_host']
+            self.__poll_interval = int(config['DEFAULT']['poll_interval'])
+            print "Database: {0} Host: {1} Poll interval: {2}".format(self.__influxDB_db, self.__influxDB_host, self.__poll_interval)
 
     def run(self):
         while True:
             try:
+                cpu_load = sysstat.getCPU()
                 temperature = self.getTemperature()
-                timeUTC = self.getTimeUTC()
                 uid = self.getUID()
-                self.submitHtmlPost(uid, temperature, timeUTC)
+                self.submitData(db=self.__influxDB_db, uid=uid,
+                                temperature=temperature, cpu_load=cpu_load)
             except Exception as e:
                 print "Caught exception - {0}".format(e)
             finally:
-                time.sleep(60)
+                time.sleep(self.__poll_interval)
+
+    def submitData(self, db, uid, temperature=None, cpu_load=None):
+        client = InfluxDBClient(database=db, host=self.__influxDB_host,
+                                port=self.__influxDB_port)
+        client.create_database(db)
+        json_body = [
+            {
+                "measurement": db,
+                "tags": {
+                    "host": uid
+                },
+                "fields": {
+                    "cpu_temperature": float(temperature),
+                    "cpu_load": float(cpu_load)
+                }
+            }
+        ]
+        print "Writing {0}".format(json_body)
+        client.write_points(json_body)
+        client.close()
 
     def getTemperature(self):
-        reg = re.compile(r"(\d+.\d+)")
         p = subprocess.Popen(self.__temperatureCommand,
                              stdout=subprocess.PIPE,
                              shell=True)
@@ -42,7 +68,7 @@ class pi2_temperature_reporter:
 
         if(result != 0):
             raise
-        regmatch = reg.search(output)
+        regmatch = self.__reg.search(output)
         return regmatch.group(0)
 
     def getTimeUTC(self):
@@ -50,13 +76,6 @@ class pi2_temperature_reporter:
 
     def getUID(self):
         return socket.gethostname()
-
-    def submitHtmlPost(self, uid, temperature, timeUTC):
-        url = "{0}db={1}".format(self.__influxDB_write_url, self.__influxDB_db)
-        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-        payload = "internal_temperature,host={0} value={1}\n".format(uid, temperature)
-        r = requests.post(url, data=payload, headers=headers)
-        print "Got response: {0}".format(r.status_code)
 
 
 if __name__ == '__main__':

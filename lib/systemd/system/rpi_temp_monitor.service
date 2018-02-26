@@ -3,7 +3,6 @@ Description=RPI Temperature Reporting Service
 
 [Service]
 ExecStart=/usr/bin/python /usr/local/bin/pi2_temperature_reporter.py /usr/local/share/pi2_temperature_reporter.ini
-StandardOutput=/dev/null
 
 [Install]
 WantedBy=multi-user.target
