@@ -1,10 +1,10 @@
-# PiTemperatureCollector
+# System Statistics Collector
 
-Application to report RPI temperature to influxdb backend
+Application to report system stats to influxdb backend
 
-usage: pi2_temperature_reporter.py [-h] configpath
+Local usage: pi_sysstat_reporter.py [-h] configpath
 
-Build instructions: dpkg-deb --build PiTemperatureCollector
+Build instructions: dpkg-deb --build SysStatCollector
 
 
 Python package requirements:
